@@ -14,7 +14,10 @@ t = gettext.translation(
     os.path.join(os.path.dirname(__file__), "locales"),
     fallback=True
 )
-_ = t.ugettext
+try:
+    _ = t.ugettext
+except AttributeError:
+    _ = t.gettext
 
 logger = logging.getLogger('zget')
 
