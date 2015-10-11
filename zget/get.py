@@ -10,12 +10,13 @@ try:
 except ImportError:
     import urllib
 import hashlib
-import argparse
 import logging
 
 from zeroconf import ServiceBrowser, Zeroconf
 
 from . import utils
+from .utils import _
+import argparse
 
 __all__ = ["get"]
 
@@ -35,7 +36,7 @@ class ServiceListener(object):
 
     def add_service(self, zeroconf, type, name):
         if name == self.filehash + "._zget._http._tcp.local.":
-            utils.logger.info("Peer found. Downloading...")
+            utils.logger.info(_("Peer found. Downloading..."))
             info = zeroconf.get_service_info(type, name)
             if info:
                 self.address = socket.inet_ntoa(info.address)
@@ -52,17 +53,17 @@ def cli(inargs=None):
     parser.add_argument(
         '--verbose', '-v',
         action='count', default=0,
-        help="Verbose mode. Multiple -v options increase the verbosity"
+        help=_("Verbose mode. Multiple -v options increase the verbosity")
     )
     parser.add_argument(
         '--quiet', '-q',
         action='count', default=0,
-        help="Quiet mode. Hides progess bar"
+        help=_("Quiet mode. Hides progess bar")
     )
     parser.add_argument(
         '--timeout', '-t',
-        type=int, metavar="SECONDS",
-        help="Set timeout after which program aborts transfer"
+        type=int, metavar=_("SECONDS"),
+        help=_("Set timeout after which program aborts transfer")
     )
     parser.add_argument(
         '--version', '-V',
@@ -70,13 +71,13 @@ def cli(inargs=None):
         version='%%(prog)s %s' % utils.__version__
     )
     parser.add_argument(
-        'filename',
-        help="The filename to look for on the network"
+        'filename', metavar=_("filename"),
+        help=_("The filename to look for on the network")
     )
     parser.add_argument(
-        'output',
+        'output', metavar=_("output"),
         nargs='?',
-        help="The local filename to save to"
+        help=_("The local filename to save to")
     )
     args = parser.parse_args(inargs)
 
@@ -134,7 +135,7 @@ def get(
     listener = ServiceListener()
     listener.filehash = filehash
 
-    utils.logger.debug("Looking for " + filehash + "._zget._http._tcp.local.")
+    utils.logger.debug(_("Looking for %s._zget._http._tcp.local.") % filehash)
 
     browser = ServiceBrowser(zeroconf, "_zget._http._tcp.local.", listener)
 
@@ -150,7 +151,8 @@ def get(
                 raise utils.TimeoutException()
 
         utils.logger.debug(
-            "Downloading from %s:%d" % (listener.address, listener.port)
+            _("Downloading from %(a)s:%(p)d") %
+            {'a': listener.address, 'p': listener.port}
         )
         url = "http://" + listener.address + ":" + str(listener.port) + "/" + \
               urllib.pathname2url(filename)
@@ -161,7 +163,7 @@ def get(
         )
     except KeyboardInterrupt:
         pass
-    utils.logger.info("Done.")
+    utils.logger.info(_("Done."))
     zeroconf.close()
 
 if __name__ == '__main__':

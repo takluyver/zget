@@ -1,12 +1,20 @@
 import sys
 import os
 import netifaces
+import gettext
 import logging
 import progressbar
 try:
     import configparser
 except ImportError:
     import ConfigParser as configparser
+
+t = gettext.translation(
+    'zget',
+    os.path.join(os.path.dirname(__file__), "locales"),
+    fallback=True
+)
+_ = t.ugettext
 
 logger = logging.getLogger('zget')
 
@@ -16,7 +24,7 @@ __version__ = "0.9"
 class TimeoutException(Exception):
     """ Exception raised when a timeout was hit.
     """
-    message = "Timeout."
+    message = _("Timeout.")
 
 
 class Progresshook(object):
@@ -141,4 +149,4 @@ def ip_addr(interface):
     try:
         return netifaces.ifaddresses(interface)[netifaces.AF_INET][0]['addr']
     except KeyError:
-        raise ValueError("You have selected an invalid interface")
+        raise ValueError(_("You have selected an invalid interface"))
