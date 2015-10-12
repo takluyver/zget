@@ -2,16 +2,20 @@
 from __future__ import absolute_import, division, print_function, \
     unicode_literals
 import os
+import re
 import sys
 import time
 import socket
 try:
     import urllib.request as urllib
+    import urllib.parse as urlparse
 except ImportError:
     import urllib
+    import urlparse
 import hashlib
 import argparse
 import logging
+import requests
 
 from zeroconf import ServiceBrowser, Zeroconf
 
@@ -97,6 +101,57 @@ def cli(inargs=None):
         sys.exit(1)
 
 
+def unique_filename(filename):
+    if not os.path.exists(filename):
+        return filename
+
+    path, name = os.path.split(filename)
+    name, ext = os.path.splitext(name)
+
+    def make_filename(i):
+        return os.path.join(path, '%s_%d%s' % (name, i, ext))
+
+    for i in xrange(1, sys.maxint):
+        unique_filename = make_filename(i)
+        if not os.path.exists(unique_filename):
+            return unique_filename
+
+    raise FileExistsError()
+
+
+def urlretrieve(
+    url,
+    output=None,
+    reporthook=None
+):
+    r = requests.get(url, stream=True)
+    try:
+        maxsize = int(r.headers['content-length'])
+    except KeyError:
+        maxsize = -1
+
+    if output is None:
+        try:
+            filename = re.findall(
+                "filename=(\S+)", r.headers['content-disposition']
+            )[0].strip('\'"')
+        except (IndexError, KeyError):
+            filename = urlparse.unquote(
+                os.path.basename(urlparse.urlparse(url).path)
+            )
+        filename = unique_filename(filename)
+        reporthook.filename = filename
+    else:
+        filename = output
+
+    with open(filename, 'wb') as f:
+        for i, chunk in enumerate(r.iter_content(chunk_size=1024 * 8)):
+            if chunk:
+                f.write(chunk)
+                if reporthook is not None:
+                    reporthook(i, 1024 * 8, maxsize)
+
+
 def get(
     filename,
     output=None,
@@ -127,8 +182,6 @@ def get(
     """
     basename = os.path.basename(filename)
     filehash = hashlib.sha1(basename.encode('utf-8')).hexdigest()
-    if output is None:
-        output = filename
 
     zeroconf = Zeroconf()
     listener = ServiceListener()
@@ -155,7 +208,7 @@ def get(
         url = "http://" + listener.address + ":" + str(listener.port) + "/" + \
               urllib.pathname2url(filename)
 
-        urllib.urlretrieve(
+        urlretrieve(
             url, output,
             reporthook=reporthook
         )
